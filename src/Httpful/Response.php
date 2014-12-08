@@ -34,15 +34,16 @@ class Response
     {
         $this->request      = $request;
         $this->raw_headers  = $headers;
-        $this->raw_body     = $body;
         $this->meta_data    = $meta_data;
 
         $this->code         = $this->_parseCode($headers);
         $this->headers      = Response\Headers::fromString($headers);
 
+        $this->raw_body     = $this->_decodeBody($body);
+
         $this->_interpretHeaders();
 
-        $this->body         = $this->_parse($body);
+        $this->body         = $this->_parse($this->raw_body);
     }
 
     /**
@@ -143,6 +144,18 @@ class Response
             throw new \Exception("Unable to parse response code from HTTP response due to malformed response");
         }
         return intval($parts[1]);
+    }
+
+    public function _decodeBody($encodedBody)
+    {
+      $encoding = isset($this->headers['Content-Encoding']) ? $this->headers['Content-Encoding'] : '';
+      // FIXME: cheap and incomplete:
+      if (strpos($encoding,"deflate")!==false) {
+        return http_inflate($encodedBody);
+      }
+      else {
+        return $encodedBody;
+      }
     }
 
     /**
